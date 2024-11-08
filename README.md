@@ -1,2 +1,1 @@
-# contember-event-log-viewer
-A web app to display event log from Contember API
+This repository is empty. Any task executed on it should be considered a new capability and needs to be created.
