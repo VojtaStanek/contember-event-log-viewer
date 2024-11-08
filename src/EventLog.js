@@ -1,8 +1,9 @@
 import React from 'react';
+import './EventLog.css'; // Import the CSS file for styling
 
 const EventLog = ({ data }) => {
   return (
-    <table>
+    <table className="event-log-table">
       <thead>
         <tr>
           <th>Timestamp</th>
