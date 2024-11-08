@@ -1,5 +1,5 @@
 import React from 'react';
-import './EventLog.css'; // Import the CSS file for styling
+import './EventLog.css';
 
 const EventLog = ({ data }) => {
   return (
@@ -22,10 +22,10 @@ const EventLog = ({ data }) => {
             <td>{entry.type}</td>
             <td>{entry.tableName}</td>
             <td>{entry.primaryKey}</td>
-            <td>
-              {entry.type === 'CreateEvent' && JSON.stringify(entry.newValues)}
-              {entry.type === 'UpdateEvent' && JSON.stringify(entry.diffValues)}
-              {entry.type === 'DeleteEvent' && JSON.stringify(entry.oldValues)}
+            <td className="details">
+              {entry.type === 'CREATE' && JSON.stringify(entry.newValues, null, 2)}
+              {entry.type === 'UPDATE' && JSON.stringify(entry.diffValues, null, 2)}
+              {entry.type === 'DELETE' && JSON.stringify(entry.oldValues, null, 2)}
             </td>
             <td>{entry.identityDescription}</td>
             <td>{entry.identityId}</td>

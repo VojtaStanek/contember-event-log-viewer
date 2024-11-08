@@ -22,3 +22,8 @@
 .event-log-table tr:hover {
   background-color: #ddd;
 }
+
+.details {
+	white-space: pre-wrap;
+	font-family: 'Courier New', Courier, monospace;
+}
