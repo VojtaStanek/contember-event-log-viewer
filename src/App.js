@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import EventLog from './EventLog';
 
 const App = () => {
@@ -9,19 +9,42 @@ const App = () => {
   const [primaryKey, setPrimaryKey] = useState('');
   const [eventLogData, setEventLogData] = useState([]);
 
+  useEffect(() => {
+    const savedConfig = JSON.parse(localStorage.getItem('eventLogConfig'));
+    if (savedConfig) {
+      setApiEndpoint(savedConfig.apiEndpoint);
+      setProjectName(savedConfig.projectName);
+      setAuthToken(savedConfig.authToken);
+      setTableName(savedConfig.tableName);
+      setPrimaryKey(savedConfig.primaryKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('eventLogConfig', JSON.stringify({
+      apiEndpoint,
+      projectName,
+      authToken,
+      tableName,
+      primaryKey
+    }));
+  }, [apiEndpoint, projectName, authToken, tableName, primaryKey]);
+
   const fetchEventLogData = async () => {
-    const response = await fetch(apiEndpoint, {
+
+    const response = await fetch(apiEndpoint.replace(/\/$/, '') + '/system/' + projectName, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({
-        query: `query ($since: DateTime!) {
-          events(args: { stage: "live", filter: { appliedAt: { from: $since } }, limit: 100000 }) {
+        query: `query ($tableName: String!, $primaryKey: PrimaryKey!) {
+          events(args: { stage: "live", filter: { rows: { tableName: $tableName primaryKey: [$primaryKey] } } }) {
             type
             identityId
             identityDescription
+            appliedAt 
             ... on CreateEvent {
               tableName
               primaryKey
@@ -40,12 +63,13 @@ const App = () => {
           }
         }`,
         variables: {
-          since: ""
+          tableName,
+          primaryKey
         }
       })
     });
     const data = await response.json();
-    setEventLogData(data);
+    setEventLogData(data.data.events);
   };
 
   const handleSubmit = (e) => {
@@ -55,7 +79,7 @@ const App = () => {
 
   return (
     <div>
-      <h1>React Event Log Viewer</h1>
+      <h1>Contember Event Log Viewer</h1>
       <form onSubmit={handleSubmit}>
         <div>
           <label>API Endpoint:</label>
