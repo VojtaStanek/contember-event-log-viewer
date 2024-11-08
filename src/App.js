@@ -9,6 +9,7 @@ const App = () => {
   const [tableName, setTableName] = useState('');
   const [primaryKey, setPrimaryKey] = useState('');
   const [eventLogData, setEventLogData] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const savedConfig = JSON.parse(localStorage.getItem('eventLogConfig'));
@@ -32,45 +33,53 @@ const App = () => {
   }, [apiEndpoint, projectName, authToken, tableName, primaryKey]);
 
   const fetchEventLogData = async () => {
-
-    const response = await fetch(apiEndpoint.replace(/\/$/, '') + '/system/' + projectName, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        query: `query ($tableName: String!, $primaryKey: PrimaryKey!) {
-          events(args: { stage: "live", filter: { rows: { tableName: $tableName primaryKey: [$primaryKey] } } }) {
-            type
-            identityId
-            identityDescription
-            appliedAt 
-            ... on CreateEvent {
-              tableName
-              primaryKey
-              newValues
+    try {
+      const response = await fetch(apiEndpoint.replace(/\/$/, '') + '/system/' + projectName, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          query: `query ($tableName: String!, $primaryKey: PrimaryKey!) {
+            events(args: { stage: "live", filter: { rows: { tableName: $tableName primaryKey: [$primaryKey] } } }) {
+              type
+              identityId
+              identityDescription
+              appliedAt 
+              ... on CreateEvent {
+                tableName
+                primaryKey
+                newValues
+              }
+              ... on UpdateEvent {
+                tableName
+                primaryKey
+                diffValues
+              }
+              ... on DeleteEvent {
+                tableName
+                primaryKey
+                oldValues
+              }
             }
-            ... on UpdateEvent {
-              tableName
-              primaryKey
-              diffValues
-            }
-            ... on DeleteEvent {
-              tableName
-              primaryKey
-              oldValues
-            }
+          }`,
+          variables: {
+            tableName,
+            primaryKey
           }
-        }`,
-        variables: {
-          tableName,
-          primaryKey
-        }
-      })
-    });
-    const data = await response.json();
-    setEventLogData(data.data.events);
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}: ${await response.text()}`);
+      }
+      const data = await response.json();
+      setEventLogData(data.data.events);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      setEventLogData([]);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -81,6 +90,7 @@ const App = () => {
   return (
     <div className="app-container">
       <h1>Contember Event Log Viewer</h1>
+      {error && <div className="error-message">{error}</div>}
       <form onSubmit={handleSubmit} className="form-container">
         <div className="form-group">
           <label>API Endpoint:</label>
