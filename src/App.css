@@ -10,19 +10,27 @@ h1 {
 
 .form-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
 }
 
 .form-group {
   margin-bottom: 10px;
   width: 320px;
+  flex: 0 1 300px;
+  box-sizing: border-box;
 }
 
 .form-group > input,
 .form-group > select {
   width: 100%;
+}
+
+@media (min-width: 768px) {
+  .form-group {
+    margin-right: 10px;
+  }
 }
 
 label {
@@ -60,6 +68,7 @@ input, select {
   border-radius: 4px;
   cursor: pointer;
   margin-right: 10px;
+  margin-bottom: 10px;
 }
 
 .save-button:hover {

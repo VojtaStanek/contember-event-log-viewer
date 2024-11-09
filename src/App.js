@@ -115,39 +115,43 @@ const App = () => {
     <div className="app-container">
       <h1>Contember Event Log Viewer</h1>
       {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleSubmit} className="form-container">
-        <div className="form-group">
-          <label>Profile:</label>
-          <select value={selectedProfile} onChange={handleProfileChange}>
-            {profiles.map(profile => (
-              <option key={`${profile.apiEndpoint}-${profile.projectName}`} value={`${profile.apiEndpoint}-${profile.projectName}`}>
-                {`${profile.apiEndpoint} - ${profile.projectName}`}
-              </option>
-            ))}
-          </select>
+      <form onSubmit={handleSubmit}>
+        <div className="form-container">
+          <div className="form-group">
+            <label>Profile:</label>
+            <select value={selectedProfile} onChange={handleProfileChange}>
+              {profiles.map(profile => (
+                <option key={`${profile.apiEndpoint}-${profile.projectName}`} value={`${profile.apiEndpoint}-${profile.projectName}`}>
+                  {`${profile.apiEndpoint} - ${profile.projectName}`}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="button" onClick={handleSaveProfile} className="save-button">Save Profile</button>
         </div>
-        <div className="form-group">
-          <label>API Endpoint:</label>
-          <input type="text" value={apiEndpoint} onChange={(e) => setApiEndpoint(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Project Name:</label>
-          <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Bearer Auth Token:</label>
-          <input type="password" value={authToken} onChange={(e) => setAuthToken(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Table Name:</label>
-          <input type="text" value={tableName} onChange={(e) => setTableName(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Primary Key:</label>
-          <input type="text" value={primaryKey} onChange={(e) => setPrimaryKey(e.target.value)} />
+        <div className="form-container">
+          <div className="form-group">
+            <label>API Endpoint:</label>
+            <input type="text" value={apiEndpoint} onChange={(e) => setApiEndpoint(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Project Name:</label>
+            <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Bearer Auth Token:</label>
+            <input type="password" value={authToken} onChange={(e) => setAuthToken(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Table Name:</label>
+            <input type="text" value={tableName} onChange={(e) => setTableName(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Primary Key:</label>
+            <input type="text" value={primaryKey} onChange={(e) => setPrimaryKey(e.target.value)} />
+          </div>
         </div>
         <div className="button-group">
-          <button type="button" onClick={handleSaveProfile} className="save-button">Save Profile</button>
           <button type="submit" className="submit-button">Fetch Event Log</button>
         </div>
       </form>
