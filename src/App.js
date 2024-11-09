@@ -136,7 +136,7 @@ const App = () => {
         </div>
         <div className="form-group">
           <label>Bearer Auth Token:</label>
-          <input type="text" value={authToken} onChange={(e) => setAuthToken(e.target.value)} />
+          <input type="password" value={authToken} onChange={(e) => setAuthToken(e.target.value)} />
         </div>
         <div className="form-group">
           <label>Table Name:</label>
