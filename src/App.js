@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import EventLog from './EventLog';
-import './App.css'; // Import the CSS file for styling
+import './App.css';
 
 const App = () => {
+  const [profiles, setProfiles] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState('');
   const [apiEndpoint, setApiEndpoint] = useState('');
   const [projectName, setProjectName] = useState('');
   const [authToken, setAuthToken] = useState('');
@@ -12,25 +14,47 @@ const App = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const savedConfig = JSON.parse(localStorage.getItem('eventLogConfig'));
-    if (savedConfig) {
-      setApiEndpoint(savedConfig.apiEndpoint);
-      setProjectName(savedConfig.projectName);
-      setAuthToken(savedConfig.authToken);
-      setTableName(savedConfig.tableName);
-      setPrimaryKey(savedConfig.primaryKey);
+    const savedProfiles = JSON.parse(localStorage.getItem('eventLogProfiles')) || [];
+    setProfiles(savedProfiles);
+    if (savedProfiles.length > 0) {
+      const defaultProfile = savedProfiles[0];
+      setSelectedProfile(`${defaultProfile.apiEndpoint}-${defaultProfile.projectName}`);
+      setApiEndpoint(defaultProfile.apiEndpoint);
+      setProjectName(defaultProfile.projectName);
+      setAuthToken(defaultProfile.authToken);
+      setTableName(defaultProfile.tableName);
+      setPrimaryKey(defaultProfile.primaryKey);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('eventLogConfig', JSON.stringify({
+    localStorage.setItem('eventLogProfiles', JSON.stringify(profiles));
+  }, [profiles]);
+
+  const handleProfileChange = (e) => {
+    const profileKey = e.target.value;
+    setSelectedProfile(profileKey);
+    const profile = profiles.find(p => `${p.apiEndpoint}-${p.projectName}` === profileKey);
+    if (profile) {
+      setApiEndpoint(profile.apiEndpoint);
+      setProjectName(profile.projectName);
+      setAuthToken(profile.authToken);
+      setTableName(profile.tableName);
+      setPrimaryKey(profile.primaryKey);
+    }
+  };
+
+  const handleSaveProfile = () => {
+    const newProfile = {
       apiEndpoint,
       projectName,
       authToken,
       tableName,
       primaryKey
-    }));
-  }, [apiEndpoint, projectName, authToken, tableName, primaryKey]);
+    };
+    setProfiles([...profiles.filter(p => `${p.apiEndpoint}-${p.projectName}` !== selectedProfile), newProfile]);
+    setSelectedProfile(`${apiEndpoint}-${projectName}`);
+  };
 
   const fetchEventLogData = async () => {
     try {
@@ -93,6 +117,16 @@ const App = () => {
       {error && <div className="error-message">{error}</div>}
       <form onSubmit={handleSubmit} className="form-container">
         <div className="form-group">
+          <label>Profile:</label>
+          <select value={selectedProfile} onChange={handleProfileChange}>
+            {profiles.map(profile => (
+              <option key={`${profile.apiEndpoint}-${profile.projectName}`} value={`${profile.apiEndpoint}-${profile.projectName}`}>
+                {`${profile.apiEndpoint} - ${profile.projectName}`}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
           <label>API Endpoint:</label>
           <input type="text" value={apiEndpoint} onChange={(e) => setApiEndpoint(e.target.value)} />
         </div>
@@ -112,7 +146,10 @@ const App = () => {
           <label>Primary Key:</label>
           <input type="text" value={primaryKey} onChange={(e) => setPrimaryKey(e.target.value)} />
         </div>
-        <button type="submit" className="submit-button">Fetch Event Log</button>
+        <div className="button-group">
+          <button type="button" onClick={handleSaveProfile} className="save-button">Save Profile</button>
+          <button type="submit" className="submit-button">Fetch Event Log</button>
+        </div>
       </form>
       <EventLog data={eventLogData} />
     </div>
