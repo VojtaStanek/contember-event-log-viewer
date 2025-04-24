@@ -45,6 +45,7 @@ const App = () => {
   };
 
   const handleSaveProfile = () => {
+    const profileKey = `${apiEndpoint}-${projectName}`;
     const newProfile = {
       apiEndpoint,
       projectName,
@@ -52,8 +53,34 @@ const App = () => {
       tableName,
       primaryKey
     };
-    setProfiles([...profiles.filter(p => `${p.apiEndpoint}-${p.projectName}` !== selectedProfile), newProfile]);
-    setSelectedProfile(`${apiEndpoint}-${projectName}`);
+    setProfiles([...profiles.filter(p => `${p.apiEndpoint}-${p.projectName}` !== profileKey), newProfile]);
+    setSelectedProfile(profileKey);
+  };
+
+  const handleSaveAsNewProfile = () => {
+    const newProfile = {
+      apiEndpoint,
+      projectName,
+      authToken,
+      tableName,
+      primaryKey
+    };
+    // Check if a profile with the same key already exists
+    const profileKey = `${apiEndpoint}-${projectName}`;
+    const existingProfileIndex = profiles.findIndex(p => `${p.apiEndpoint}-${p.projectName}` === profileKey);
+
+    if (existingProfileIndex !== -1) {
+      // If it exists, update it (or handle as needed, e.g., prompt user)
+      // For now, let's just update the existing one if the user clicks "Save as New" on an existing profile name
+      // A better approach might be to slightly alter the name or prompt the user
+      const updatedProfiles = [...profiles];
+      updatedProfiles[existingProfileIndex] = newProfile;
+      setProfiles(updatedProfiles);
+    } else {
+      // If it doesn't exist, add it as a new profile
+      setProfiles([...profiles, newProfile]);
+    }
+    setSelectedProfile(profileKey);
   };
 
   const fetchEventLogData = async () => {
@@ -120,6 +147,7 @@ const App = () => {
           <div className="form-group">
             <label>Profile:</label>
             <select value={selectedProfile} onChange={handleProfileChange}>
+              <option value="">Select or type new profile</option> {/* Added default option */}
               {profiles.map(profile => (
                 <option key={`${profile.apiEndpoint}-${profile.projectName}`} value={`${profile.apiEndpoint}-${profile.projectName}`}>
                   {`${profile.apiEndpoint} - ${profile.projectName}`}
@@ -128,6 +156,7 @@ const App = () => {
             </select>
           </div>
           <button type="button" onClick={handleSaveProfile} className="save-button">Save Profile</button>
+          <button type="button" onClick={handleSaveAsNewProfile} className="save-button">Save As New</button> {/* Added Save As New button */}
         </div>
         <div className="form-container">
           <div className="form-group">
