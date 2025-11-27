@@ -1,35 +1,41 @@
-
 .event-log-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-top: 2rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 0 10px var(--glow-color);
 }
 
 .event-log-table th, .event-log-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-.event-log-table th {
-  background-color: #f2f2f2;
+  border: 1px solid var(--border-color);
+  padding: 1rem;
   text-align: left;
 }
 
+.event-log-table th {
+  background-color: var(--text-color);
+  color: var(--background-color);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 .event-log-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: rgba(0, 255, 65, 0.05);
 }
 
 .event-log-table tr:hover {
-  background-color: #ddd;
+  background-color: rgba(0, 255, 65, 0.1);
 }
 
 .details {
-	white-space: pre-wrap;
-	font-family: 'Courier New', Courier, monospace;
+  white-space: pre-wrap;
+  font-family: var(--font-family-main);
+  background-color: transparent;
+  color: var(--text-color);
 }
 
 .timestamp {
-  font-size: 0.8em;
-  color: #666;
+  font-size: 0.9em;
+  color: var(--accent-color);
   white-space: nowrap;
 }
