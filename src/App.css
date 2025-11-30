@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 2rem;
+  padding: 1rem;
   box-sizing: border-box;
   text-shadow: 0 0 5px var(--glow-color);
   animation: var(--flicker-animation);
@@ -50,8 +50,8 @@
 h1 {
   text-align: center;
   color: var(--accent-color);
-  font-size: 2.5em;
-  margin-bottom: 2rem;
+  font-size: 2em;
+  margin-bottom: 1rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
@@ -60,15 +60,15 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  margin-bottom: 1rem;
   border: 1px solid var(--border-color);
-  padding: 1.5rem;
+  padding: 1rem;
   box-shadow: 0 0 10px var(--glow-color);
 }
 
 .form-group {
-  flex: 1 1 250px;
+  flex: 1 1 200px;
   display: flex;
   flex-direction: column;
 }
@@ -84,7 +84,7 @@ input, select {
   background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-color);
-  padding: 0.75rem;
+  padding: 0.5rem;
   font-family: var(--font-family-main);
   text-shadow: 0 0 5px var(--glow-color);
 }
@@ -98,14 +98,15 @@ input:focus, select:focus {
   display: flex;
   justify-content: center;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
+  width: 100%;
 }
 
 .submit-button, .save-button {
   background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-color);
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1rem;
   font-family: var(--font-family-main);
   text-transform: uppercase;
   cursor: pointer;
