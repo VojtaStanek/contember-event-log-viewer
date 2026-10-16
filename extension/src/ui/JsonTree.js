@@ -35,7 +35,13 @@ const preview = (value) => {
   return `{ ${shown}${keys.length > 4 ? `, +${keys.length - 4}` : ''} }`;
 };
 
-const Node = ({ name, value, path, depth, openDepth, isIndex }) => {
+// The `id` of an object that names its type (`__typename`) can link to that record.
+const recordLink = (linkFor, parent, key, value) =>
+  linkFor && key === 'id' && typeof value === 'string' && isObj(parent) && !Array.isArray(parent) && typeof parent.__typename === 'string'
+    ? linkFor(parent.__typename, value)
+    : null;
+
+const Node = ({ name, value, path, depth, openDepth, isIndex, link, linkFor }) => {
   const expandable = isObj(value) && Object.keys(value).length > 0;
   const [open, setOpen] = useState(depth < openDepth);
   const [limit, setLimit] = useState(PAGE);
@@ -56,7 +62,11 @@ const Node = ({ name, value, path, depth, openDepth, isIndex }) => {
         ) : (
           <span className="jt-leaf">
             {label}{label && <span className="jt-colon">:</span>}
-            {isObj(value) ? <span className="jt-null">{Array.isArray(value) ? '[]' : '{}'}</span> : <Primitive value={value} />}
+            {isObj(value)
+              ? <span className="jt-null">{Array.isArray(value) ? '[]' : '{}'}</span>
+              : link
+                ? <a className="jt-str jt-link" href={link.href} title={link.title}>"{value}"</a>
+                : <Primitive value={value} />}
           </span>
         )}
         <span className="jt-actions">
@@ -75,6 +85,8 @@ const Node = ({ name, value, path, depth, openDepth, isIndex }) => {
               depth={depth + 1}
               openDepth={openDepth}
               isIndex={Array.isArray(value)}
+              link={recordLink(linkFor, value, k, v)}
+              linkFor={linkFor}
             />
           ))}
           {entries.length > limit && (
@@ -90,8 +102,9 @@ const Node = ({ name, value, path, depth, openDepth, isIndex }) => {
   );
 };
 
-// Collapsible JSON with copy value / copy path on every line.
-export const JsonTree = ({ value, rootPath = '', openDepth = 3 }) => {
+// Collapsible JSON with copy value / copy path on every line. With `linkFor(typename, id)`
+// returning { href, title }, record IDs become links.
+export const JsonTree = ({ value, rootPath = '', openDepth = 3, linkFor }) => {
   const [generation, setGeneration] = useState({ n: 0, depth: openDepth });
   if (!isObj(value)) {
     return <div className="jt"><Primitive value={value} /></div>;
@@ -113,6 +126,8 @@ export const JsonTree = ({ value, rootPath = '', openDepth = 3 }) => {
             depth={1}
             openDepth={generation.depth}
             isIndex={Array.isArray(value)}
+            link={recordLink(linkFor, value, k, v)}
+            linkFor={linkFor}
           />
         ))}
       </ul>

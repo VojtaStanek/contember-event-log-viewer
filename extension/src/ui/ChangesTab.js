@@ -220,9 +220,11 @@ export const ViewerPane = ({ route, hash, meta, backLabel, onBack }) => {
         <button type="button" className="btn-quiet" onClick={onBack}>← {backLabel}</button>
         <span className="insp-muted">{meta.project} · {meta.stage}</span>
       </div>
-      {gate.error && <div className="insp-pad"><SessionNotice error={gate.error} meta={meta} /></div>}
-      {!gate.ready && !gate.error && <div className="insp-pad">{gate.node}</div>}
-      {view}
+      <div className="insp-viewer-body">
+        {gate.error && <div className="insp-pad"><SessionNotice error={gate.error} meta={meta} /></div>}
+        {!gate.ready && !gate.error && <div className="insp-pad">{gate.node}</div>}
+        {view}
+      </div>
     </div>
   );
 };

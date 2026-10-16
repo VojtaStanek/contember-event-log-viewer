@@ -43,6 +43,11 @@ const parseResponse = (text) => {
   }
 };
 
+// Content API objects name their entity in __typename; link their IDs to the record's history.
+const recordLinkFor = (meta) => (meta.api === 'content' && meta.project
+  ? (typename, id) => ({ href: href.row(typename, id), title: `Open the history of ${typename} ${id}` })
+  : null);
+
 const VERB = { create: 'created', update: 'updated', upsert: 'upserted', delete: 'deleted', get: 'loaded' };
 
 const KIND_LABEL = { validation: 'Validation', mutation: 'Not applied', graphql: 'GraphQL', http: 'HTTP', network: 'Network' };
@@ -223,7 +228,7 @@ export const RequestDetail = ({ meta, tab, onTab, notify, onClose }) => {
         {body && tab === 'response' && (
           <>
             {meta.truncated && <p className="insp-hint">The response is larger than 5 MB, so only its beginning was kept.</p>}
-            {response.kind === 'json' && <JsonTree value={response.value} openDepth={4} />}
+            {response.kind === 'json' && <JsonTree value={response.value} openDepth={4} linkFor={recordLinkFor(meta)} />}
             {response.kind === 'text' && <pre className="insp-code">{response.value}</pre>}
             {response.kind === 'none' && <p className="insp-hint">{meta.outcome === 'aborted' ? 'The admin cancelled this request before the response arrived.' : 'No response was received.'}</p>}
           </>

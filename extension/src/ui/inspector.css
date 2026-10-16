@@ -249,6 +249,8 @@ code { font-family: var(--mono); font-size: 12px; }
 .jt-colon { color: var(--ink-muted); margin-right: 6px; }
 .jt-preview { color: var(--ink-muted); }
 .jt-str { color: var(--create); white-space: pre-wrap; }
+a.jt-link { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 2px; }
+a.jt-link:hover { text-decoration-color: currentColor; }
 .jt-num { color: var(--update); }
 .jt-bool { color: var(--wire); }
 .jt-null { color: var(--ink-muted); font-style: italic; }
@@ -258,15 +260,19 @@ code { font-family: var(--mono); font-size: 12px; }
 .jt-more { padding: 2px 0 2px 13px; }
 
 /* ---------- Embedded event-log viewer ---------- */
-.insp-viewer { --topbar-h: 0px; }
+/* The viewer scrolls on its own below its bar, so the record's rail and panel can stick
+   to the top of the pane and span its full height (100cqh), like the standalone viewer. */
+.insp-viewer { height: 100%; display: flex; flex-direction: column; }
+.insp-viewer-body { flex: 1; min-height: 0; overflow: auto; container-type: size; --topbar-h: 0px; }
 .insp-viewer-bar {
-  position: sticky; top: 0; z-index: 5;
+  flex-shrink: 0; z-index: 5;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 6px 12px; background: var(--sheet); border-bottom: 1px solid var(--rule); font-size: 13px;
 }
-.insp-viewer .rail, .insp-viewer .record-panel { position: static; height: auto; }
-.insp-viewer .record-body.has-rail { grid-template-columns: 52px minmax(0, 1fr); }
-.insp-viewer .record-body.has-rail.has-panel { grid-template-columns: 52px minmax(260px, 340px) minmax(0, 1fr); }
+@media (min-width: 901px) {
+  .insp-viewer .rail, .insp-viewer .record-panel { top: 0; height: 100cqh; }
+  .insp-viewer .record-body.has-rail.has-panel { grid-template-columns: 52px minmax(260px, 340px) minmax(0, 1fr); }
+}
 .insp-viewer .record-history, .insp-viewer .stream-page { padding: 16px 20px 48px; }
 .insp-changes .stream { padding-top: 0; }
 .insp-changes .stream-end { display: none; }
@@ -280,7 +286,6 @@ code { font-family: var(--mono); font-size: 12px; }
   .insp-back { display: inline-block; }
   .insp-search { max-width: none; flex-basis: 100%; order: 10; }
   .insp-detail-head, .insp-detail-body { padding-left: 12px; padding-right: 12px; }
-  .insp-viewer .record-body.has-rail, .insp-viewer .record-body.has-rail.has-panel { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Popup ---------- */
