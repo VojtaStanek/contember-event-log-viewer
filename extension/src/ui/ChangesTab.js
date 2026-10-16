@@ -33,7 +33,8 @@ export const SessionNotice = ({ error, meta, onRetry }) => {
 };
 
 const useSchemaGate = () => {
-  const { schemaStatus, schemaError } = useApp();
+  const { conn, schemaStatus, schemaError } = useApp();
+  if (!conn) return { ready: false, node: <p className="insp-hint" role="status">This request didn't go to a Contember project, so it has no event log.</p> };
   if (schemaStatus === 'idle' || schemaStatus === 'loading') return { ready: false, node: <p className="insp-hint" role="status">Loading the project schema…</p> };
   if (schemaStatus === 'error') return { ready: false, error: schemaError };
   return { ready: true };

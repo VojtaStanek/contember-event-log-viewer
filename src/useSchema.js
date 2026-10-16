@@ -4,11 +4,16 @@ import { buildSchemaIndex } from './schema';
 
 // Loads the project schema once per session (cached in sessionStorage) and indexes it.
 // status: idle | loading | ready | unavailable (no permission, extras off) | error (blocks everything)
+const IDLE = { index: null, status: 'idle', error: null };
+
 export const useSchema = (conn) => {
-  const [state, setState] = useState({ index: null, status: 'idle', error: null });
+  // Tagged with its connection: right after `conn` changes, and before the effect
+  // below runs, the previous connection's schema must not be reported as ready.
+  const [state, setStateFor] = useState({ ...IDLE, conn: null });
   useEffect(() => {
+    const setState = (next) => setStateFor({ ...next, conn });
     if (!conn) {
-      setState({ index: null, status: 'idle', error: null });
+      setState(IDLE);
       return;
     }
     const cacheKey = `eventLogSchema|${connectionKey(conn)}`;
@@ -41,5 +46,6 @@ export const useSchema = (conn) => {
       });
     return () => controller.abort();
   }, [conn]);
+  if (!conn || state.conn !== conn) return IDLE;
   return state;
 };
