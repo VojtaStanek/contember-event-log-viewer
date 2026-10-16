@@ -7,6 +7,7 @@ import { href, useHashRoute } from './useHashRoute';
 import { shortId } from './format';
 import { ConnectionPanel, profileLabel } from './components/ConnectionPanel';
 import { SearchBar } from './components/SearchBar';
+import { Logo } from './components/Logo';
 import { RowView } from './components/RowView';
 import { IdentityView, TableView, TransactionView } from './components/StreamViews';
 import { ErrorNotice, Toasts } from './components/Notices';
@@ -203,7 +204,7 @@ const App = () => {
     <AppContext.Provider value={ctx}>
       <div className="app">
         <header className="topbar">
-          <a className="brand" href={href.home()}>Event log</a>
+          <a className="brand" href={href.home()}><Logo />Event log</a>
           <button
             type="button"
             className={`profile-chip${panelOpen ? ' is-on' : ''}`}

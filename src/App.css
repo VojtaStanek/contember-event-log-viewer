@@ -169,6 +169,9 @@ button:disabled { cursor: default; opacity: .5; }
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--ink);
   font-weight: 600;
   font-size: 15px;
