@@ -1,4 +1,5 @@
 // Thin GraphQL client for the Contember system and content APIs.
+import { CONTENT_INTROSPECTION, modelFromIntrospection } from './schemaFromContent';
 
 export class ApiError extends Error {
   constructor(message, { status, graphql } = {}) {
@@ -102,9 +103,16 @@ export async function fetchEvents(conn, { filter, order = 'CREATED_AT_DESC', lim
   return data.events;
 }
 
+// Engines older than the System API's `schema` query get a model inferred from the
+// Content API's introspection instead.
 export async function fetchSchema(conn, signal) {
-  const data = await gql(conn, systemUrl(conn), 'query { schema }', undefined, signal);
-  return data.schema;
+  try {
+    const data = await gql(conn, systemUrl(conn), 'query { schema }', undefined, signal);
+    return data.schema;
+  } catch (e) {
+    if (!(e.graphql && e.graphql.some(err => /Cannot query field "schema"/.test(err.message || '')))) throw e;
+  }
+  return modelFromIntrospection(await gql(conn, contentUrl(conn), CONTENT_INTROSPECTION, undefined, signal));
 }
 
 // --- Content API ----------------------------------------------------------

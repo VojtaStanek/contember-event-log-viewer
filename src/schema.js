@@ -45,7 +45,8 @@ export function buildSchemaIndex(rawSchema) {
     }
   }
 
-  return { entities, enums, byTable };
+  // inferred: rebuilt from the Content API on engines without the System API's schema query.
+  return { entities, enums, byTable, inferred: !!(rawSchema.inferred || model.inferred) };
 }
 
 // Resolves what the user typed (entity name or table name) to a table name.

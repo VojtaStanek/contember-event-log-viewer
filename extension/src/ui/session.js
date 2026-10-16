@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { AppContext } from '../../../src/context';
 import { useSchema } from '../../../src/useSchema';
 import { connectionFor } from '../lib/transport';
+import { toSnake } from '../../../src/schemaFromContent';
 
 // One connection object per (tab, endpoint, project, stage), so the viewer's caches
 // (schema, loaded events) keep working when you move between requests.
@@ -20,8 +21,6 @@ export const useConnection = (meta) => {
     return connections.get(key);
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 };
-
-const toSnake = (name) => name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
 
 // Table of an entity; without the schema, Contember's default naming.
 export const tableFor = (schema, entity) =>

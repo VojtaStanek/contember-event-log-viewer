@@ -141,6 +141,9 @@ export const RowView = ({ table, pk }) => {
           {schemaStatus === 'unavailable' && (
             <span>The schema isn't readable with this token, so relations and editing are off.</span>
           )}
+          {schema && schema.inferred && (
+            <span>This Contember version doesn't publish its schema, so entity and column names are inferred from the Content API.</span>
+          )}
           {schema && !info && <span>No entity uses this table in the current schema.</span>}
         </div>
       </header>
