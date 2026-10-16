@@ -1,191 +1,256 @@
-import React, { useState, useEffect } from 'react';
-import EventLog from './EventLog';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
+import { AppContext } from './context';
+import { connectionKey, fetchSchema } from './api';
+import { buildSchemaIndex, tableLabel } from './schema';
+import { href, useHashRoute } from './useHashRoute';
+import { shortId } from './format';
+import { ConnectionPanel, profileLabel } from './components/ConnectionPanel';
+import { SearchBar } from './components/SearchBar';
+import { RowView } from './components/RowView';
+import { IdentityView, TableView, TransactionView } from './components/StreamViews';
+import { ErrorNotice, Toasts } from './components/Notices';
+
+const PROFILES_KEY = 'eventLogProfiles';
+const ACTIVE_KEY = 'eventLogActiveProfile';
+const RECENT_KEY = 'eventLogRecent';
+
+const storage = {
+  get(key, fallback) {
+    try {
+      const v = localStorage.getItem(key);
+      return v === null ? fallback : JSON.parse(v);
+    } catch (e) {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      // Storage may be unavailable (private mode); the app still works for this session.
+    }
+  },
+};
+
+const loadProfiles = () =>
+  (storage.get(PROFILES_KEY, []) || []).map(p => ({
+    ...p,
+    id: p.id || `${p.apiEndpoint}-${p.projectName}`,
+    stage: p.stage || 'live',
+  }));
+
+const routeLabel = (route, schema) => {
+  switch (route.name) {
+    case 'row': return `${tableLabel(schema, route.table)} ${shortId(route.pk)}`;
+    case 'tx': return `Transaction ${shortId(route.id)}`;
+    case 'table': return `${tableLabel(schema, route.table)} changes`;
+    case 'identity': return route.label || `Identity ${shortId(route.id)}`;
+    default: return null;
+  }
+};
+
+const useSchema = (conn) => {
+  const [state, setState] = useState({ index: null, status: 'idle', error: null });
+  useEffect(() => {
+    if (!conn) {
+      setState({ index: null, status: 'idle', error: null });
+      return;
+    }
+    const cacheKey = `eventLogSchema|${connectionKey(conn)}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        setState({ index: buildSchemaIndex(JSON.parse(cached)), status: 'ready', error: null });
+        return;
+      }
+    } catch (e) {
+      // Fall through to fetching.
+    }
+    const controller = new AbortController();
+    setState({ index: null, status: 'loading', error: null });
+    fetchSchema(conn, controller.signal)
+      .then(raw => {
+        const index = buildSchemaIndex(raw);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(raw));
+        } catch (e) {
+          // Too large or unavailable: it'll be fetched again next session.
+        }
+        setState({ index, status: index ? 'ready' : 'unavailable', error: null });
+      })
+      .catch(e => {
+        if (e.name === 'AbortError') return;
+        // Auth/network problems block everything; missing schema permission only disables extras.
+        const fatal = !e.graphql;
+        setState({ index: null, status: fatal ? 'error' : 'unavailable', error: e });
+      });
+    return () => controller.abort();
+  }, [conn]);
+  return state;
+};
+
+const Home = ({ recent, connected }) => (
+  <main className="home">
+    <h1 className="home-title">Trace what happened to a record.</h1>
+    <p className="home-text">
+      {connected
+        ? 'Open a record by entity and ID, an entity alone for its latest changes, or paste a transaction ID. Press / to jump to the search.'
+        : 'Connect to a Contember project to start. You need the API endpoint, project name and a token with history access.'}
+    </p>
+    {connected && recent.length > 0 && (
+      <section className="home-recent">
+        <h2 className="panel-heading">Recently opened</h2>
+        <ul>
+          {recent.map(r => (
+            <li key={r.hash}><a href={r.hash}>{r.label}</a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </main>
+);
 
 const App = () => {
-  const [profiles, setProfiles] = useState([]);
-  const [selectedProfile, setSelectedProfile] = useState('');
-  const [apiEndpoint, setApiEndpoint] = useState('');
-  const [projectName, setProjectName] = useState('');
-  const [authToken, setAuthToken] = useState('');
-  const [tableName, setTableName] = useState('');
-  const [primaryKey, setPrimaryKey] = useState('');
-  const [eventLogData, setEventLogData] = useState([]);
-  const [error, setError] = useState(null);
+  const [route, hash] = useHashRoute();
+  const [profiles, setProfiles] = useState(loadProfiles);
+  const [activeId, setActiveId] = useState(() => {
+    const saved = storage.get(ACTIVE_KEY, null);
+    const list = loadProfiles();
+    return (list.find(p => p.id === saved) || list[0] || {}).id || null;
+  });
+  const [conn, setConn] = useState(() => loadProfiles().find(p => p.id === activeId) || null);
+  const [panelOpen, setPanelOpen] = useState(() => !conn);
+  const [toasts, setToasts] = useState([]);
+  const [trail, setTrail] = useState([]);
+  const [recent, setRecent] = useState(() => storage.get(RECENT_KEY, []));
+  const schema = useSchema(conn);
 
-  useEffect(() => {
-    const savedProfiles = JSON.parse(localStorage.getItem('eventLogProfiles')) || [];
-    setProfiles(savedProfiles);
-    if (savedProfiles.length > 0) {
-      const defaultProfile = savedProfiles[0];
-      setSelectedProfile(`${defaultProfile.apiEndpoint}-${defaultProfile.projectName}`);
-      setApiEndpoint(defaultProfile.apiEndpoint);
-      setProjectName(defaultProfile.projectName);
-      setAuthToken(defaultProfile.authToken);
-      setTableName(defaultProfile.tableName);
-      setPrimaryKey(defaultProfile.primaryKey);
-    }
+  useEffect(() => storage.set(PROFILES_KEY, profiles), [profiles]);
+  useEffect(() => storage.set(ACTIVE_KEY, activeId), [activeId]);
+
+  const notify = useCallback((message, kind = 'ok') => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t, { id, message, kind }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200);
   }, []);
 
+  // Navigation trail: revisiting a step cuts the trail back to it.
   useEffect(() => {
-    localStorage.setItem('eventLogProfiles', JSON.stringify(profiles));
-  }, [profiles]);
-
-  const handleProfileChange = (e) => {
-    const profileKey = e.target.value;
-    setSelectedProfile(profileKey);
-    const profile = profiles.find(p => `${p.apiEndpoint}-${p.projectName}` === profileKey);
-    if (profile) {
-      setApiEndpoint(profile.apiEndpoint);
-      setProjectName(profile.projectName);
-      setAuthToken(profile.authToken);
-      setTableName(profile.tableName);
-      setPrimaryKey(profile.primaryKey);
-    }
-  };
-
-  const handleSaveProfile = () => {
-    const profileKey = `${apiEndpoint}-${projectName}`;
-    const newProfile = {
-      apiEndpoint,
-      projectName,
-      authToken,
-      tableName,
-      primaryKey
-    };
-    setProfiles([...profiles.filter(p => `${p.apiEndpoint}-${p.projectName}` !== profileKey), newProfile]);
-    setSelectedProfile(profileKey);
-  };
-
-  const handleSaveAsNewProfile = () => {
-    const newProfile = {
-      apiEndpoint,
-      projectName,
-      authToken,
-      tableName,
-      primaryKey
-    };
-    // Check if a profile with the same key already exists
-    const profileKey = `${apiEndpoint}-${projectName}`;
-    const existingProfileIndex = profiles.findIndex(p => `${p.apiEndpoint}-${p.projectName}` === profileKey);
-
-    if (existingProfileIndex !== -1) {
-      // If it exists, update it (or handle as needed, e.g., prompt user)
-      // For now, let's just update the existing one if the user clicks "Save as New" on an existing profile name
-      // A better approach might be to slightly alter the name or prompt the user
-      const updatedProfiles = [...profiles];
-      updatedProfiles[existingProfileIndex] = newProfile;
-      setProfiles(updatedProfiles);
-    } else {
-      // If it doesn't exist, add it as a new profile
-      setProfiles([...profiles, newProfile]);
-    }
-    setSelectedProfile(profileKey);
-  };
-
-  const fetchEventLogData = async () => {
-    try {
-      const response = await fetch(apiEndpoint.replace(/\/$/, '') + '/system/' + projectName, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          query: `query ($tableName: String!, $primaryKey: PrimaryKey!) {
-            events(args: { stage: "live", filter: { rows: { tableName: $tableName primaryKey: [$primaryKey] } } }) {
-              type
-              identityId
-              identityDescription
-              appliedAt 
-              ... on CreateEvent {
-                tableName
-                primaryKey
-                newValues
-              }
-              ... on UpdateEvent {
-                tableName
-                primaryKey
-                diffValues
-              }
-              ... on DeleteEvent {
-                tableName
-                primaryKey
-                oldValues
-              }
-            }
-          }`,
-          variables: {
-            tableName,
-            primaryKey
-          }
-        })
+    const label = routeLabel(route, schema.index);
+    if (!label) return;
+    setTrail(t => {
+      const at = t.findIndex(s => s.hash === hash);
+      if (at !== -1) return t.slice(0, at + 1).map(s => (s.hash === hash ? { hash, label } : s));
+      return [...t, { hash, label }].slice(-8);
+    });
+    if (route.name === 'row') {
+      setRecent(r => {
+        const next = [{ hash, label }, ...r.filter(x => x.hash !== hash)].slice(0, 12);
+        storage.set(RECENT_KEY, next);
+        return next;
       });
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}: ${await response.text()}`);
-      }
-      const data = await response.json();
-      setEventLogData(data.data.events);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-      setEventLogData([]);
     }
+  }, [hash, schema.index]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectProfile = (id) => {
+    const p = profiles.find(x => x.id === id);
+    if (!p) return;
+    setActiveId(id);
+    setConn(p);
+    setTrail([]);
+    setPanelOpen(false);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    fetchEventLogData();
+  const saveProfile = (data, id) => {
+    const profile = { ...data, id: id || Date.now().toString(36) };
+    setProfiles(list => (id ? list.map(p => (p.id === id ? profile : p)) : [...list, profile]));
+    setActiveId(profile.id);
+    setConn(profile);
+    notify(`Saved profile ${profileLabel(profile)}`);
   };
+
+  const deleteProfile = (id) => {
+    setProfiles(list => list.filter(p => p.id !== id));
+    if (id === activeId) {
+      setActiveId(null);
+      setConn(null);
+    }
+    notify('Deleted profile');
+  };
+
+  const connect = (data) => {
+    setConn(data);
+    setTrail([]);
+    setPanelOpen(false);
+  };
+
+  const ctx = useMemo(
+    () => ({ conn, schema: schema.index, schemaStatus: schema.status, notify }),
+    [conn, schema.index, schema.status, notify],
+  );
+
+  // Views don't wait for the schema: events load in parallel and labels upgrade once it arrives.
+  const ready = conn && schema.status !== 'error';
+  let view;
+  if (!ready || route.name === 'home') view = <Home recent={recent} connected={!!conn} />;
+  else if (route.name === 'row') view = <RowView key={hash} table={route.table} pk={route.pk} />;
+  else if (route.name === 'tx') view = <TransactionView key={hash} id={route.id} />;
+  else if (route.name === 'table') view = <TableView key={hash} table={route.table} />;
+  else if (route.name === 'identity') view = <IdentityView key={hash} id={route.id} label={route.label} />;
 
   return (
-    <div className="app-container">
-      <h1>Contember Event Log Viewer</h1>
-      {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <div className="form-container">
-          <div className="form-group">
-            <label>Profile:</label>
-            <select value={selectedProfile} onChange={handleProfileChange}>
-              <option value="">Select or type new profile</option> {/* Added default option */}
-              {profiles.map(profile => (
-                <option key={`${profile.apiEndpoint}-${profile.projectName}`} value={`${profile.apiEndpoint}-${profile.projectName}`}>
-                  {`${profile.apiEndpoint} - ${profile.projectName}`}
-                </option>
+    <AppContext.Provider value={ctx}>
+      <div className="app">
+        <header className="topbar">
+          <a className="brand" href={href.home()}>Event log</a>
+          <button
+            type="button"
+            className={`profile-chip${panelOpen ? ' is-on' : ''}`}
+            aria-expanded={panelOpen}
+            onClick={() => setPanelOpen(!panelOpen)}
+          >
+            {conn ? profileLabel(conn) : 'Set up connection'}
+            {conn && <span className="profile-stage">{conn.stage || 'live'}</span>}
+          </button>
+          <SearchBar route={route} disabled={!ready} />
+        </header>
+
+        {panelOpen && (
+          <ConnectionPanel
+            profiles={profiles}
+            activeId={activeId}
+            onSelect={selectProfile}
+            onSave={saveProfile}
+            onDelete={deleteProfile}
+            onConnect={connect}
+            onClose={conn ? () => setPanelOpen(false) : null}
+          />
+        )}
+
+        {schema.status === 'loading' && <div className="banner" role="status">Loading schema…</div>}
+        {schema.status === 'error' && (
+          <div className="banner banner--error">
+            <ErrorNotice error={schema.error} onRetry={() => setConn({ ...conn })} />
+          </div>
+        )}
+
+        {ready && trail.length > 1 && (
+          <nav className="trail" aria-label="Navigation trail">
+            <ol>
+              {trail.map(step => (
+                <li key={step.hash}>
+                  {step.hash === hash ? <span aria-current="page">{step.label}</span> : <a href={step.hash}>{step.label}</a>}
+                </li>
               ))}
-            </select>
-          </div>
-          <button type="button" onClick={handleSaveProfile} className="save-button">Save Profile</button>
-          <button type="button" onClick={handleSaveAsNewProfile} className="save-button">Save As New</button> {/* Added Save As New button */}
-        </div>
-        <div className="form-container">
-          <div className="form-group">
-            <label>API Endpoint:</label>
-            <input type="text" value={apiEndpoint} onChange={(e) => setApiEndpoint(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Project Name:</label>
-            <input type="text" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Bearer Auth Token:</label>
-            <input type="password" value={authToken} onChange={(e) => setAuthToken(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Table Name:</label>
-            <input type="text" value={tableName} onChange={(e) => setTableName(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Primary Key:</label>
-            <input type="text" value={primaryKey} onChange={(e) => setPrimaryKey(e.target.value)} />
-          </div>
-        </div>
-        <div className="button-group">
-          <button type="submit" className="submit-button">Fetch Event Log</button>
-        </div>
-      </form>
-      <EventLog data={eventLogData} />
-    </div>
+            </ol>
+          </nav>
+        )}
+
+        {view}
+        <Toasts toasts={toasts} />
+      </div>
+    </AppContext.Provider>
   );
 };
 
