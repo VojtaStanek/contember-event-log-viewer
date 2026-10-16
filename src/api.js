@@ -14,41 +14,58 @@ export const contentUrl = (conn) => `${baseUrl(conn)}/content/${conn.projectName
 
 export const connectionKey = (conn) => `${baseUrl(conn)}|${conn.projectName}|${conn.stage || 'live'}`;
 
-export async function gql(url, token, query, variables, signal) {
+// Default transport: the browser's fetch with the profile's bearer token.
+// Another transport (e.g. the browser extension relaying through a page that holds
+// a session cookie) can be passed on the connection as `conn.transport`.
+export async function fetchTransport({ url, token, body, signal }) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url, { method: 'POST', headers, body, signal });
+  return { status: response.status, ok: response.ok, text: await response.text() };
+}
+
+const sessionAuth = (conn) => conn && conn.auth === 'session';
+
+export async function gql(conn, url, query, variables, signal) {
+  const transport = (conn && conn.transport) || fetchTransport;
   let response;
   try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query, variables }),
-      signal,
-    });
+    response = await transport({ url, token: conn && conn.authToken, body: JSON.stringify({ query, variables }), signal });
   } catch (e) {
     if (e.name === 'AbortError') throw e;
+    if (e instanceof ApiError) throw e;
     throw new ApiError(`Couldn't reach ${url}. Check the API endpoint and that the server allows requests from this origin (CORS).`);
   }
   if (response.status === 401) {
-    throw new ApiError('The server rejected the token (401). Update it in the profile.', { status: 401 });
+    throw new ApiError(
+      sessionAuth(conn)
+        ? 'Your admin session has expired (401). Log in to the admin again, then retry.'
+        : 'The server rejected the token (401). Update it in the profile.',
+      { status: 401 },
+    );
   }
   if (response.status === 403) {
-    throw new ApiError('This token is not allowed to do that (403). Use a token with the needed permissions.', { status: 403 });
+    throw new ApiError(
+      sessionAuth(conn)
+        ? 'Your admin user is not allowed to do that (403).'
+        : 'This token is not allowed to do that (403). Use a token with the needed permissions.',
+      { status: 403 },
+    );
   }
   if (response.status === 404) {
     throw new ApiError(`Nothing found at ${url} (404). Check the API endpoint, project name and stage.`, { status: 404 });
   }
   let body;
   try {
-    body = await response.json();
+    body = JSON.parse(response.text);
   } catch (e) {
     throw new ApiError(`The server answered ${response.status} with a response that isn't JSON.`, { status: response.status });
   }
   if (body.errors && body.errors.length) {
     throw new ApiError(body.errors.map(e => e.message).join('\n'), { status: response.status, graphql: body.errors });
   }
-  if (!response.ok) {
+  const ok = response.ok !== undefined ? response.ok : response.status >= 200 && response.status < 300;
+  if (!ok) {
     throw new ApiError(`The server answered ${response.status}.`, { status: response.status });
   }
   return body.data;
@@ -76,8 +93,8 @@ const EVENT_FIELDS = `
 
 export async function fetchEvents(conn, { filter, order = 'CREATED_AT_DESC', limit = 50, offset = 0 }, signal) {
   const data = await gql(
+    conn,
     systemUrl(conn),
-    conn.authToken,
     `query ($args: EventsArgs) { events(args: $args) { ${EVENT_FIELDS} } }`,
     { args: { stage: conn.stage || 'live', filter, order, limit, offset } },
     signal,
@@ -86,12 +103,12 @@ export async function fetchEvents(conn, { filter, order = 'CREATED_AT_DESC', lim
 }
 
 export async function fetchSchema(conn, signal) {
-  const data = await gql(systemUrl(conn), conn.authToken, 'query { schema }', undefined, signal);
+  const data = await gql(conn, systemUrl(conn), 'query { schema }', undefined, signal);
   return data.schema;
 }
 
 // --- Content API ----------------------------------------------------------
 
 export async function content(conn, query, variables, signal) {
-  return gql(contentUrl(conn), conn.authToken, query, variables, signal);
+  return gql(conn, contentUrl(conn), query, variables, signal);
 }

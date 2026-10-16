@@ -7,7 +7,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:extension": "node scripts/build-extension.mjs",
+    "watch:extension": "node scripts/build-extension.mjs --watch",
+    "test:extension": "node --test test/extension/*.test.mjs",
+    "lint:extension": "eslint --max-warnings 0 extension/src"
   },
   "dependencies": {
     "react": "^17.0.2",
@@ -31,5 +35,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12",
+    "graphql": "^16.14.2"
   }
 }
